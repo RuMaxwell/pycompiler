@@ -25,7 +25,10 @@ def isAlphaNum(c):
     return isNumber(c) or isAlpha(c)
 
 def isIdHead(c):
-    return isAlpha(c)
+    return isAlpha(c) or c == '_'
+
+def isIdBody(c):
+    return isAlphaNum(c) or c == '_'
 
 stateTrans = {
     "Normal": [
@@ -37,7 +40,7 @@ stateTrans = {
         [otherwise, "Normal"]
     ],
     "Identifier": [
-        [isAlphaNum, "Identifier"],
+        [isIdBody, "Identifier"],
         [otherwise, "EndOfToken"]
     ],
     "Integer": [
@@ -50,12 +53,15 @@ stateTrans = {
         [otherwise, "EndOfToken"]
     ],
     "String": [
-        [lambda x: x == '"', "EndOfToken"],
+        [lambda x: x == '"', "StringEnd"],
         [otherwise, "String"]
+    ],
+    "StringEnd": [
+        [otherwise, "EndOfToken"]
     ],
     "Dash": [
         [lambda x: x == '-', "LineComment"],
-        [isAlphaNum, "Normal"],
+        [isIdBody, "Normal"],
         [otherwise, "Error"]
     ],
     "LineComment": [
@@ -71,8 +77,11 @@ stateTrans = {
         [otherwise, "BlockComment"]
     ],
     "BlockCmtEnd?": [
-        [lambda x: x == ')', "EndOfToken"],
+        [lambda x: x == ')', "BlockCmtEnd"],
         [otherwise, "BlockComment"]
+    ],
+    "BlockCmtEnd": [
+        [otherwise, "EndOfToken"]
     ],
     "Error": [
         [otherwise, "Error"]
@@ -106,16 +115,19 @@ def readToken(state, s):
 
     token = None
 
-    if newstate == "Normal":
+    """if newstate == "Normal":
         if state != "Normal":
             token = (state, tokenbuff[:-1])
             tokenbuff = charbuff
             newstate = refreshState(newstate, charbuff)
         else:
             tokenbuff = ""
+    elif newstate == "EndOfToken":"""
+    if newstate == "Normal":
+        tokenbuff = ""
     elif newstate == "EndOfToken":
         newstate = "Normal"
-        token = (state, tokenbuff)
+        token = (state, tokenbuff[:-1])
         tokenbuff = ""
     else:
         token = None
