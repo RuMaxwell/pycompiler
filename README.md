@@ -1,6 +1,6 @@
 # pycompiler
 ---
-Python implement of a compiler, starting from a compiler of Cool programming language.
+Python implement of a compiler, starting from absolute ZERO to a compiler of Cool programming language.
 
 The project will implement the lexer, the parser, the semant and the codegen of Cool.
 
