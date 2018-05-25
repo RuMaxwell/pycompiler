@@ -7,6 +7,6 @@ Python implement of a compiler, starting from absolute zero to a compiler of Coo
 
 该项目的中文博客可以在`blog/`目录下找到，希望能对有自己手动从零实现编译器，又像我最初一样不知如何下手的同学有所帮助。这个博客会不断更新，以完善内容和改进篇章结构。
 
-- [如何入手](blog/how to get started.md)
+- [如何入手](blog/how-to-get-started.md)
 - [词法分析器](blog/lexer.md)
 
