@@ -30,7 +30,7 @@ stateTrans = {
     "Normal": [
         [isNumber, "Integer"],
         [isIdHead, "Identifier"],
-        [lambda x: x == '"', "String"],
+        [lambda x: x == '"', "String?"],
         [lambda x: x == '-', "Dash"],
         [lambda x: x == '.', "Dispatch"],
         [lambda x: x == '@', "BasePointer"],
@@ -97,11 +97,11 @@ stateTrans = {
         [isNumber, "Floating"],
         [otherwise, "EndOfToken"]
     ],
-    "String": [
-        [lambda x: x == '"', "StringEnd"],
-        [otherwise, "String"]
+    "String?": [
+        [lambda x: x == '"', "String"],
+        [otherwise, "String?"]
     ],
-    "StringEnd": [
+    "String": [
         [otherwise, "EndOfToken"]
     ],
     "Dash": [
@@ -114,18 +114,18 @@ stateTrans = {
         [otherwise, "LineComment"]
     ],
     "LParen": [
-        [lambda x: x == '*', "BlockComment"],
+        [lambda x: x == '*', "BlockComment?"],
         [otherwise, "EndOfToken"]
     ],
-    "BlockComment": [
+    "BlockComment?": [
         [lambda x: x == '*', "BlockCmtEnd?"],
-        [otherwise, "BlockComment"]
+        [otherwise, "BlockComment?"]
     ],
     "BlockCmtEnd?": [
-        [lambda x: x == ')', "BlockCmtEnd"],
-        [otherwise, "BlockComment"]
+        [lambda x: x == ')', "BlockComment"],
+        [otherwise, "BlockComment?"]
     ],
-    "BlockCmtEnd": [
+    "BlockComment": [
         [otherwise, "EndOfToken"]
     ],
     "RParen": [
