@@ -43,10 +43,38 @@ stateTrans = {
         [lambda x: x == '(', "LParen"],
         [lambda x: x == ')', "RParen"],
         [lambda x: x == '{', "LBrace"],
+        [lambda x: x == '}', "RBrace"],
+        [lambda x: x == ';', "Semicolon"],
         [otherwise, "Normal"]
     ],
-    "LBrace": [
+    "Identifier": [
+        [isIdBody, "Identifier"],
         [otherwise, "EndOfToken"]
+    ],
+    "Integer": [
+        [isNumber, "Integer"],
+        [lambda x: x == '.', "Floating"],
+        [otherwise, "EndOfToken"]
+    ],
+    "Floating": [
+        [isNumber, "Floating"],
+        [otherwise, "EndOfToken"]
+    ],
+    "String?": [
+        [lambda x: x == '"', "String"],
+        [otherwise, "String?"]
+    ],
+    "String": [
+        [otherwise, "EndOfToken"]
+    ],
+    "Dash": [
+        [lambda x: x == '-', "LineComment"],
+        [isIdBody, "Normal"],
+        [otherwise, "Error"]
+    ],
+    "LineComment": [
+        [lambda x: x == '\n', "EndOfToken"],
+        [otherwise, "LineComment"]
     ],
     "Dispatch": [
         [otherwise, "EndOfToken"]
@@ -84,34 +112,14 @@ stateTrans = {
     "CaseArrow": [
         [otherwise, "EndOfToken"]
     ],
-    "Identifier": [
-        [isIdBody, "Identifier"],
+    "LBrace": [
         [otherwise, "EndOfToken"]
     ],
-    "Integer": [
-        [isNumber, "Integer"],
-        [lambda x: x == '.', "Floating"],
+    "RBrace": [
         [otherwise, "EndOfToken"]
     ],
-    "Floating": [
-        [isNumber, "Floating"],
+    "Semicolon": [
         [otherwise, "EndOfToken"]
-    ],
-    "String?": [
-        [lambda x: x == '"', "String"],
-        [otherwise, "String?"]
-    ],
-    "String": [
-        [otherwise, "EndOfToken"]
-    ],
-    "Dash": [
-        [lambda x: x == '-', "LineComment"],
-        [isIdBody, "Normal"],
-        [otherwise, "Error"]
-    ],
-    "LineComment": [
-        [lambda x: x == '\n', "EndOfToken"],
-        [otherwise, "LineComment"]
     ],
     "LParen": [
         [lambda x: x == '*', "BlockComment?"],
@@ -218,6 +226,8 @@ def checkKeyword(tok):
 
 
 def lexer(s):
+    global charbuff
+
     lexes = []
 
     if s == "":
@@ -227,6 +237,9 @@ def lexer(s):
     #states = readToken(state, s)
     state = "Normal"
 
+    linenum = 1
+    columnnum = 1
+
     while state != "EOF":
         states = readToken(state, s)
         state = states[0]
@@ -234,9 +247,14 @@ def lexer(s):
         tok = checkKeyword(tok)
         moveon = not states[2]
         if tok:
-            lexes.append(tok)
+            lexes.append((linenum, columnnum) + tok)
         if moveon:
             s = s[1:]
+            if charbuff == '\n':
+                columnnum = 1
+                linenum += 1
+            else:
+                columnnum += 1
 
     return lexes
 
@@ -247,7 +265,7 @@ def main():
         fn = argv[1]
         with open(fn, 'r') as f:
             ls = f.readlines()
-            ls = '\n'.join(ls)
+            ls = ''.join(ls)
         list(map(print, lexer(ls)))
 
 if __name__ == '__main__':
