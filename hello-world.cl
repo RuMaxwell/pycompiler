@@ -62,6 +62,9 @@ class Main inherits IO
     -- Program entrance
     main () : SELF_TYPE
     {
-        out_string("Hello, world"(* A nested comment block *))
+        out_string("Hello, world\
+        a multiline string\n
+        direct newline"(* A nested comment block *))
     };
 };
+"

@@ -47,6 +47,52 @@ stateTrans = {
         [lambda x: x == ';', "Semicolon"],
         [otherwise, "Normal"]
     ],
+    "Addition": [
+        [otherwise, "EndOfToken"]
+    ],
+    "Assignment": [
+        [otherwise, "EndOfToken"]
+    ],
+    "BasePointer": [
+        [otherwise, "EndOfToken"]
+    ],
+    "BlockCmtEnd?": [
+        [lambda x: x == ')', "BlockComment"],
+        [otherwise, "BlockComment?"]
+    ],
+    "BlockComment": [
+        [otherwise, "EndOfToken"]
+    ],
+    "BlockComment?": [
+        [lambda x: x == '*', "BlockCmtEnd?"],
+        [otherwise, "BlockComment?"]
+    ],
+    "CaseArrow": [
+        [otherwise, "EndOfToken"]
+    ],
+    "Dash": [
+        [lambda x: x == '-', "LineComment"],
+        [isIdBody, "Normal"],
+        [otherwise, "Error"]
+    ],
+    "Dispatch": [
+        [otherwise, "EndOfToken"]
+    ],
+    "Division": [
+        [otherwise, "EndOfToken"]
+    ],
+    "Equal": [
+        [lambda x: x == '>', "CaseArrow"],
+        [otherwise, "EndOfToken"]
+    ],
+    "Escape?": [
+        [lambda x: x in ['b', 't', 'n', 'f', '\\', '\n'], "String?"],
+        [otherwise, "Error"]
+    ],
+    "Floating": [
+        [isNumber, "Floating"],
+        [otherwise, "EndOfToken"]
+    ],
     "Identifier": [
         [isIdBody, "Identifier"],
         [otherwise, "EndOfToken"]
@@ -56,87 +102,46 @@ stateTrans = {
         [lambda x: x == '.', "Floating"],
         [otherwise, "EndOfToken"]
     ],
-    "Floating": [
-        [isNumber, "Floating"],
+    "LBrace": [
         [otherwise, "EndOfToken"]
     ],
-    "String?": [
-        [lambda x: x == '"', "String"],
-        [otherwise, "String?"]
-    ],
-    "String": [
+    "LessEqual": [
         [otherwise, "EndOfToken"]
-    ],
-    "Dash": [
-        [lambda x: x == '-', "LineComment"],
-        [isIdBody, "Normal"],
-        [otherwise, "Error"]
     ],
     "LineComment": [
         [lambda x: x == '\n', "EndOfToken"],
         [otherwise, "LineComment"]
-    ],
-    "Dispatch": [
-        [otherwise, "EndOfToken"]
-    ],
-    "BasePointer": [
-        [otherwise, "EndOfToken"]
-    ],
-    "Tilde": [
-        [otherwise, "EndOfToken"]
-    ],
-    "Multiplication": [
-        [otherwise, "EndOfToken"]
-    ],
-    "Division": [
-        [otherwise, "EndOfToken"]
-    ],
-    "Addition": [
-        [otherwise, "EndOfToken"]
     ],
     "Lower": [
         [lambda x: x == '-', "Assignment"],
         [lambda x: x == '=', "LessEqual"],
         [otherwise, "EndOfToken"]
     ],
-    "Equal": [
-        [lambda x: x == '>', "CaseArrow"],
+    "LParen": [
+        [lambda x: x == '*', "BlockComment?"],
         [otherwise, "EndOfToken"]
     ],
-    "Assignment": [
-        [otherwise, "EndOfToken"]
-    ],
-    "LessEqual": [
-        [otherwise, "EndOfToken"]
-    ],
-    "CaseArrow": [
-        [otherwise, "EndOfToken"]
-    ],
-    "LBrace": [
+    "Multiplication": [
         [otherwise, "EndOfToken"]
     ],
     "RBrace": [
         [otherwise, "EndOfToken"]
     ],
+    "RParen": [
+        [otherwise, "EndOfToken"]
+    ],
     "Semicolon": [
         [otherwise, "EndOfToken"]
     ],
-    "LParen": [
-        [lambda x: x == '*', "BlockComment?"],
+    "String": [
         [otherwise, "EndOfToken"]
     ],
-    "BlockComment?": [
-        [lambda x: x == '*', "BlockCmtEnd?"],
-        [otherwise, "BlockComment?"]
+    "String?": [
+        [lambda x: x == '"', "String"],
+        [lambda x: x == '\\', "Escape?"],
+        [otherwise, "String?"]
     ],
-    "BlockCmtEnd?": [
-        [lambda x: x == ')', "BlockComment"],
-        [otherwise, "BlockComment?"]
-    ],
-    "BlockComment": [
-        [otherwise, "EndOfToken"]
-    ],
-    "RParen": [
+    "Tilde": [
         [otherwise, "EndOfToken"]
     ],
     "Error": [
@@ -164,7 +169,10 @@ tokenbuff = ""
 def readToken(state, s):
     global charbuff, tokenbuff
     if s == "":
-        return ("EOF", "", False)
+        if state != "Normal":
+            return ("Error", ("Error", "Unexpected EOF"), False)
+        else:
+            return ("EOF", "", False)
 
     x = s[0]
 
@@ -240,7 +248,7 @@ def lexer(s):
     linenum = 1
     columnnum = 1
 
-    while state != "EOF":
+    while state not in ("Error", "EOF"):
         states = readToken(state, s)
         state = states[0]
         tok = states[1]
@@ -255,6 +263,9 @@ def lexer(s):
                 linenum += 1
             else:
                 columnnum += 1
+    
+    if state == "Error":
+        print("Lexical error:", states[1])
 
     return lexes
 
