@@ -6,30 +6,30 @@ def otherwise(_):
     return True
 
 
-def isAlpha(c):
+def is_alpha(c):
     return 'A' <= c <= 'Z' or 'a' <= c <= 'z'
 
 
-def isNumber(c):
+def is_number(c):
     return '0' <= c <= '9'
 
 
 def isAlphaNum(c):
-    return isNumber(c) or isAlpha(c)
+    return is_number(c) or is_alpha(c)
 
 
-def isIdHead(c):
-    return isAlpha(c) or c == '_'
+def is_id_head(c):
+    return is_alpha(c) or c == '_'
 
 
-def isIdBody(c):
+def is_id_body(c):
     return isAlphaNum(c) or c == '_'
 
 
-stateTrans = {
+state_trans = {
     "Normal": [
-        [isNumber, "Integer"],
-        [isIdHead, "Identifier"],
+        [is_number, "Integer"],
+        [is_id_head, "Identifier"],
         [lambda x: x == '"', "String?"],
         [lambda x: x == '-', "Dash"],
         [lambda x: x == '.', "Dispatch"],
@@ -72,7 +72,7 @@ stateTrans = {
     ],
     "Dash": [
         [lambda x: x == '-', "LineComment"],
-        [isIdBody, "Normal"],
+        [is_id_body, "Normal"],
         [otherwise, "Error"]
     ],
     "Dispatch": [
@@ -90,15 +90,15 @@ stateTrans = {
         [otherwise, "Error"]
     ],
     "Floating": [
-        [isNumber, "Floating"],
+        [is_number, "Floating"],
         [otherwise, "EndOfToken"]
     ],
     "Identifier": [
-        [isIdBody, "Identifier"],
+        [is_id_body, "Identifier"],
         [otherwise, "EndOfToken"]
     ],
     "Integer": [
-        [isNumber, "Integer"],
+        [is_number, "Integer"],
         [lambda x: x == '.', "Floating"],
         [otherwise, "EndOfToken"]
     ],
@@ -150,10 +150,10 @@ stateTrans = {
 }
 
 
-def refreshState(state, x):
-    global stateTrans
+def update_state(state, x):
+    global state_trans
 
-    guard = stateTrans[state]
+    guard = state_trans[state]
 
     for item in guard:
         if item[0](x):
@@ -166,7 +166,7 @@ charbuff = ' '
 tokenbuff = ""
 
 
-def readToken(state, s):
+def read_token(state, s):
     global charbuff, tokenbuff
     if s == "":
         if state != "Normal":
@@ -178,7 +178,7 @@ def readToken(state, s):
 
     charbuff = x
     tokenbuff += x
-    newstate = refreshState(state, x)
+    newstate = update_state(state, x)
 
     token = None
     endoftok = False
@@ -225,7 +225,7 @@ keywords = [
 ]
 
 
-def checkKeyword(tok):
+def check_keyword(tok):
     if tok:
         if tok[0] == "Identifier":
             if tok[1] in keywords:
@@ -249,10 +249,10 @@ def lexer(s):
     columnnum = 1
 
     while state not in ("Error", "EOF"):
-        states = readToken(state, s)
+        states = read_token(state, s)
         state = states[0]
         tok = states[1]
-        tok = checkKeyword(tok)
+        tok = check_keyword(tok)
         moveon = not states[2]
         if tok:
             lexes.append((linenum, columnnum) + tok)

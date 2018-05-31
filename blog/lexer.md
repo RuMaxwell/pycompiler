@@ -83,7 +83,7 @@ int main()
 
 ![状态机示例](lexer.png)
 
-[图1]
+【图1】
 
 
 
@@ -130,3 +130,108 @@ int main()
 再然后是箭头的表示。由于箭头意味着读入有且只有一个字符，所以我们可以就把箭头表示成那个字符。但这么做的问题是对于`[A-Za-z_0-9]`这样的规则我们得写26+26+1+10=63条几乎完全一样的规则。另一种方法是用包含所有导向相同结果的字符串，这样是可以的，但在这里我们用一种更加优雅而实用的方法。这种方法常常被JavaScript程序员用来替代大量的if-else语句树，它就是**表查找法**。
 
 对于`[A-Za-z_0-9]`这样的规则，其实用if判断是最轻松的，否则可能要写成类似于`alphanum_ = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_0123456789"`或`ord(c) in list(range(48, 58)) + list(range(65, 91)) + list(range(97, 123))`这样的东西，十分难看。但if判断不能直接作为一个值，所以要使用函数。由于我们既需要`[A-Za-z_]`也需要`[0-9]`，所以可以分别为这两个写函数，再合成。
+
+所以最终确定了，转移表的每一个`状态-箭头-状态`组合应该是`str-function-str`。我们可以直接用三元组来表示它，并用这种三元组的列表来表示整个转移表。但为了查表的方便，最好将同一出发状态的转移合并起来。因为我们手动查表时，通常都是先找到第一列是当前状态的行，再从这些行中找第二列是输入字符的行。所以转移表可以表示为`状态-所有[从该状态出发的箭头-对应的结果状态]`，如下图所示
+
+![state_trans_item](state_trans_item.png)
+
+【图2】
+
+上图对应了`Normal`状态所有可能的转移情况，这样的一个东西称作**转移项目**`state_trans_item`。转移表就是由所有带有出发箭头的状态的转移项目构成的。
+
+
+
+所以最后，转移表应该是这样的一个数据结构：
+
+```Python
+# 使用 C++ 风格的类型声明。Python 不需要类型声明，写出来是为了便于理解
+# typedef Arrow function<str, bool>
+#     箭头 是一个接受一个字符（长度为1的字符串。我们只能在程序里做限制来保证这一点），返回一个布尔值的函数
+#     例如 下面这个返回输入字符是否是数字字符的函数
+#          def is_number(c):
+#              return '0' <= c <= '9'
+# typedef Matching [Arrow, str]
+#     匹配 是一个长度为2的列表。第一个元素是箭头，第二个是结果状态
+#          使用列表而不是元组是考虑到以后可能用 JSON 储存状态表的方便。Python 的 JSON API 默认只产生列表和字典
+#     例如 Normal 状态有一个 [is_number, "Integer"] 的匹配
+# typedef StateTrans dict<str, [Matching]>
+#     转移表 是出发状态-匹配的列表的字典。每一个字典项即是一个转移项目
+state_trans = {
+    "Number": [
+        [is_number, "Integer"],
+        [is_id_head, "Identifier"],
+        [lambda x: x == '-', "Dash"],
+        [lambda x: x == '(', "LParen"],
+        [lambda x: x == '"', "String?"],
+        # TODO: 继续补充
+        [otherwise, "Normal"]
+    ],
+    # TODO: 补充完整
+    "Error": [
+        [otherwise, "Error"]
+    ]
+}
+
+# 用到的函数
+def is_number(c):
+    """是数字([0-9])"""
+    return '0' <= c <= '9'
+
+def is_id_head(c):
+    """是标识符开头([A-Za-z_])"""
+    return 'A' <= c <= 'Z' or 'a' <= c <= 'z' or c == '_'
+
+def otherwise(c):
+    """永远返回True，在所有其他匹配的最后作为万能匹配"""
+    return True
+
+```
+
+这就是表查找法的写法。注意到我们使用单独定义的函数来检测输入字符是数字还是标识符，而用lambda表达式来检测特殊的字符。lambda表达式是函数定义的匿名形式。在这里如果写`x == '-'`就可能导致一个Traceback，告诉你`x`这个名字没有声明就被使用。即使已定义`x`这个全局变量，`x == '-'`实际上代表一个`bool`值，而这个布尔值只与`x`的值有关系。你当然可以通过修改`x`来达到目的，但我们需要保证表中的这一项和`is_number`、`is_id_head`一样是可调用的，也就是它们也得是函数。所以我们要用lambda表达式，让它接受一个参数`x`，并返回是否与后面的字符相等的布尔值。`lambda x: x == '"'`等价于先定义函数`def _(x): x == '"'`，再在需要的位置写上函数名`_`。
+
+注意上面的函数`otherwise`起到类似于if-else串的`else`，或C/C++ switch-case语句的`default`的作用。如果你熟悉Haskell那你肯定早已会心一笑。它就是简单地返回`True`。只要我们写的查表算法是从上往下逐个尝试，那`otherwise`就会在其他都失败之后起作用。
+
+好，既然提到了查表算法，那我们就开始着手写状态转移函数吧。显然，转移函数接受一个状态和一个输入字符，返回一个结果状态，即`update_state(state: str, c: str): str`。它应该是如下的样子：
+
+```Python
+def update_state(state, c):
+    global state_trans # 引入前面定义的转移表全局变量
+    
+    guard = state_trans[state] # 用dict的语法找到当前状态对应的所有Matching的列表
+    
+    for item in guard: # 这可以保证检查顺序是从上到下的
+        if item[0](x): # 别忘了 item 是一个 Matching。它的第一个元素是判断一个字符是否满足条件的函数，我们用输入字符调用它
+            return item[1] # 返回新状态
+
+```
+
+很短吧！没错，表查找的数据结构可以保证高效的条件匹配，而且数据和算法分离，既方便之后添加新项，看起来也比大规模的if-else树清晰得多。想想不这么写的后果：
+
+```Python
+def update_state(state, c):
+    if state == "Normal":
+        if is_number(c):
+            return "Integer"
+        elif c == '-':
+            return "Dash"
+        # 一大串 elif
+        else:
+            return "Normal"
+    # 再来一大串 elif
+
+```
+
+不过这也比不使用状态机而是正则表达式模型要扁平得多。
+
+
+
+好了，状态机至此为止已经完美实现。我们终于可以开始按照先前的设计好转移图完善我们的转移表了。完整代码见[lexer.py](../lexer.py)。
+
+
+
+
+
+## 将token记录下来
+
+[TOP⇧](#从零开始实现词法分析器)
+
